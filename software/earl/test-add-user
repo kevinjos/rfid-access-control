@@ -1,0 +1,6 @@
+# Comment
+# This is a comment,with,multi,comma,foo,bar,x
+root,root@nb,member,,,,98968130855e30d4c21548efd88b27ef
+Jon Doe,,user,98968130855e30d4c21548efd88b27ef,2015-05-23 14:31,,f30df7e481a0b72368a10624625cd9ab
+"Another,user;[]funny""characters '",,user,98968130855e30d4c21548efd88b27ef,2015-05-23 14:31,,6ef288dfc851c06826b49d5761f98e76
+ExpiredUser,,user,98968130855e30d4c21548efd88b27ef,2015-05-23 14:31,2015-05-23 13:31,79bf5897c6fa3a7cfa931207de7f7f99

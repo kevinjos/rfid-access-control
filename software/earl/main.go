@@ -216,7 +216,7 @@ func main() {
 	}
 
 	if *httpPort > 0 && *httpPort <= 65535 {
-		apiServer := NewApiServer(appEventBus, *httpPort)
+		apiServer := NewApiServer(appEventBus, authenticator, *httpPort)
 		go apiServer.Run()
 	}
 

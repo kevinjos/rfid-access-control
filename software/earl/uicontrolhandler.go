@@ -197,6 +197,14 @@ func (u *UIControlHandler) HandleRFID(rfid string) {
 			newExp := updateUser.ExpiryDate(time.Now()).Format("Jan 02")
 			u.t.WriteLCD(0, fmt.Sprintf("Extended to %s", newExp))
 		}
+		if updateUser != nil {
+			// Write one-time pass for use in web browser.
+			// Gives ability to add contact information and
+			// change user type.
+			onetime := NewOnetime(time.Now(), rfid, u.authUserCode)
+			u.auth.SetOnetime(onetime)
+			u.t.WriteLCD(0, fmt.Sprintf("%s", onetime.pass))
+		}
 		u.t.WriteLCD(1, "[*] Done [2] Update More")
 		u.setState(StateWaitMemberCommand, 5*time.Second)
 

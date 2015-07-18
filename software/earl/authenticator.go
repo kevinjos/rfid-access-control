@@ -59,6 +59,11 @@ type Authenticator interface {
 	// Given a valid authentication code of some member, delete user
 	// associated with user_code.
 	DeleteUser(authentication_code string, user_code string) (bool, string)
+
+	// Adds a onetime pass key'd by the rfid string to map for one minute
+	// Onetime is used to interact with key through web interface
+	SetOnetime(onetime *Onetime)
+	GetOnetime(pass string) (onetime *Onetime, err error)
 }
 
 type FileBasedAuthenticator struct {
@@ -78,7 +83,8 @@ type FileBasedAuthenticator struct {
 	revision   int              // counter for optimistic locking.
 
 	eventBus *ApplicationBus
-	clock    Clock // Our source of time. Useful for simulated clock in tests
+	clock    Clock               // Our source of time. Useful for simulated clock in tests
+	onetime  map[string]*Onetime // Onetime pass to interact with rfid via web interface
 }
 
 func NewFileBasedAuthenticator(userFilename string,
@@ -91,6 +97,7 @@ func NewFileBasedAuthenticator(userFilename string,
 		revision:     0,
 		eventBus:     bus,
 		clock:        RealClock{},
+		onetime:      make(map[string]*Onetime),
 	}
 
 	if !a.readDatabase() {
@@ -199,6 +206,18 @@ func (a *FileBasedAuthenticator) DeleteUser(
 	a.postUserEvent(AppUserDeleted, user)
 
 	return a.writeDatabase()
+}
+
+func (a *FileBasedAuthenticator) SetOnetime(onetime *Onetime) {
+	a.onetime[onetime.pass] = onetime
+}
+
+func (a *FileBasedAuthenticator) GetOnetime(pass string) (onetime *Onetime, err error) {
+	onetime, ok := a.onetime[pass]
+	if !ok {
+		return nil, fmt.Errorf("passkey [%s] not found\n", pass)
+	}
+	return onetime, nil
 }
 
 func (a *FileBasedAuthenticator) verifyModifyOperationAllowed(auth_code string) (bool, string) {

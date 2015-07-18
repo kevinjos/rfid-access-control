@@ -4,6 +4,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"sort"
 	"sync"
@@ -13,6 +14,7 @@ import (
 type ApiServer struct {
 	bus    *ApplicationBus
 	server *http.Server
+	auth   Authenticator
 
 	// Remember the last event for each type. Already JSON prepared
 	eventChannel   AppEventChannel
@@ -51,7 +53,7 @@ func JsonEventFromAppEvent(event *AppEvent) *JsonAppEvent {
 	return jev
 }
 
-func NewApiServer(bus *ApplicationBus, port int) *ApiServer {
+func NewApiServer(bus *ApplicationBus, auth Authenticator, port int) *ApiServer {
 	newObject := &ApiServer{
 		bus: bus,
 		server: &http.Server{
@@ -59,6 +61,7 @@ func NewApiServer(bus *ApplicationBus, port int) *ApiServer {
 			// JSON events listeners should be kept open for a while
 			WriteTimeout: 3600 * time.Second,
 		},
+		auth:         auth,
 		eventChannel: make(AppEventChannel),
 		lastEvents:   make(map[AppEventType]*JsonAppEvent),
 	}
@@ -127,7 +130,14 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 		out.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if req.URL.Path != "/api/events" {
+
+	if req.URL.Path == "/" {
+		UIHandler(out, req)
+		return
+	} else if req.URL.Path == "/useradd" {
+		a.UseraddHandler(out, req)
+		return
+	} else if req.URL.Path != "/api/events" {
 		out.WriteHeader(http.StatusNotFound)
 		out.Write([]byte("Nothing to see here. " +
 			"The cool stuff is happening at /api/events"))
@@ -168,4 +178,84 @@ func (a *ApiServer) ServeHTTP(out http.ResponseWriter, req *http.Request) {
 		}
 	}
 	a.bus.Unsubscribe(appEvents)
+}
+
+func UIHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.Error(w, "Not found", 404)
+		return
+	}
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", 405)
+		return
+	}
+	rootTempl := template.Must(template.ParseFiles("static/index.htm"))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	rootTempl.Execute(w, r.Host)
+}
+
+func (a *ApiServer) UseraddHandler(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/useradd" {
+		http.Error(w, "Not found", 404)
+		return
+	}
+	if r.Method != "POST" {
+		http.Error(w, "Method not allowed", 405)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		fmt.Fprintf(w, "invalid form %s", err)
+	}
+	// Look up onetime pass
+	passkey := r.Form.Get("passkey")
+	if passkey == "" {
+		fmt.Fprintf(w, "Must submit passkey\n")
+		return
+	}
+	onetime, err := a.auth.GetOnetime(passkey)
+	if err != nil {
+		fmt.Fprintf(w, "Failed, %s\n", err)
+		return
+	}
+
+	// Validate input fields
+	name := r.Form.Get("name")
+	if name == "" {
+		fmt.Fprintf(w, "Must submit name\n")
+		return
+	}
+	contactInfo := r.Form.Get("contactInfo")
+	if contactInfo == "" {
+		fmt.Fprintf(w, "Must submit email\n")
+		return
+	}
+	levelStr := r.Form.Get("userType")
+	if levelStr == "" {
+		fmt.Fprintf(w, "Must submit user type\n")
+		return
+	}
+	if !isValidLevel(levelStr) {
+		fmt.Fprintf(w, "level [%s] is not valid\n", levelStr)
+		return
+	}
+	level := Level(levelStr)
+
+	// Update User
+	rfid := onetime.rfid
+	user := a.auth.FindUser(rfid)
+	if user == nil {
+		fmt.Fprintf(w, "passkey [%s] not mapped to user, try again\n", onetime)
+		return
+	}
+	updateUser := func(u *User) bool {
+		u.ContactInfo = contactInfo
+		u.Name = name
+		u.UserLevel = level
+		// Write user without code expiration
+		u.ValidFrom = time.Time{}
+		u.ValidTo = time.Time{}
+		return true
+	}
+	a.auth.UpdateUser(onetime.authUserCode, onetime.rfid, updateUser)
+	fmt.Fprintf(w, "Successfully added %s as a %s\n", r.Form["contactInfo"], r.Form["userType"])
 }

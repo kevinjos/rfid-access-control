@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang = "en">
+  <head>
+    <title>Noisebridge Access</title>
+    <meta charset = "UTF-8" />
+  </head>
+  <body>
+      <form action="http://{{$}}/useradd" method="post">
+      <fieldset>
+       <legend>Add User</legend>
+         <p>
+          <label>Onetime Password:</label>
+          <input type = "text"
+		 name = "passkey"
+                 id = "passkey"
+                 value = "" />
+	 </p>
+         <p>
+          <label>User type:</label>            
+           <input type = "radio"
+                  name = "userType"
+                  id = "user"
+                  value = "user"
+                  checked = "checked" />
+           <label for = "user">user</label>
+           <input type = "radio"
+                  name = "userType"
+                  id = "user"
+                  value = "fulltimeuser" />
+           <label for = "fulltimeuser">fulltime user</label>
+           <input type = "radio"
+                  name = "userType"
+                  id = "user"
+                  value = "philanthropist" />
+           <label for = "philanthropist">philanthropist</label>
+           <input type = "radio"
+                  name = "userType"
+                  id = "user"
+                  value = "member" />
+           <label for = "member">member</label>
+         </p>       
+         <p>
+          <label>Name:</label>
+          <input type = "text"
+		 name = "name"
+                 id = "name"
+                 value = "" />
+         </p>
+         <p>
+          <label>Email Address:</label>
+          <input type = "email"
+		 name = "contactInfo"
+                 id = "contactInfo"
+                 value = "" />
+         </p>
+	 <p>
+	   <input type = "submit" value = "Submit">
+	 </p>
+      </fieldset>     
+    </form>
+
+  </body>
+</html>
+
